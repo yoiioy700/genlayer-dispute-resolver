@@ -1,42 +1,42 @@
-# Tutorial: Membangun dApp P2P Dispute Resolution dengan AI di GenLayer
+# Tutorial: Building a P2P Dispute Resolution dApp with AI on GenLayer
 
-**Repositori Proyek:** [https://github.com/yoiioy700/genlayer-dispute-resolver](https://github.com/yoiioy700/genlayer-dispute-resolver)
+**Project Repository:** [https://github.com/yoiioy700/genlayer-dispute-resolver](https://github.com/yoiioy700/genlayer-dispute-resolver)
 
-Blockchain tradisional hanya bisa mengeksekusi logika deterministik (jika A maka B). Blockchain tersebut tidak bisa menjawab pertanyaan subjektif seperti: *"Apakah pekerjaan ini sudah dilakukan dengan cukup baik dan layak dibayar?"* karena membutuhkan sebuah penilaian.
+Traditional blockchains can only execute deterministic logic (if A then B). They cannot answer subjective questions like: *"Has this work been done well enough and deserves to be paid?"* because doing so requires judgment.
 
-**GenLayer** mengubah batasan ini dengan memperkenalkan **Intelligent Contracts**, yaitu smart contract berbasis Python yang bisa memanggil LLM (Large Language Model), menelusuri web, dan membuat keputusan yang subjektif, semuanya dicapai melalui konsensus jaringan terdesentralisasi.
+**GenLayer** changes this limitation by introducing **Intelligent Contracts**—Python-based smart contracts that can call Large Language Models (LLMs), browse the web, and make subjective decisions, all achieved through decentralized network consensus.
 
-Dalam tutorial pengguna GenLayer pemula ini, kita akan membuat aplikasi **P2P Dispute Resolution**—sebuah kontrak arbitrase tanpa perantara pihak ketiga yang diselesaikan oleh konsensus AI.
+In this beginner-friendly GenLayer tutorial, we will build a **P2P Dispute Resolution** application—an arbitration contract without a third-party intermediary, settled by AI consensus.
 
 ---
 
-## Part 1: Konsep Optimistic Democracy + Equivalence Principle
+## Part 1: The Concept of Optimistic Democracy + Equivalence Principle
 
-Sebelum mulai coding, mari pahami dua konsep inti yang membuat GenLayer sangat berbeda.
+Before diving into the code, let's understand the two core concepts that make GenLayer truly unique.
 
 ### 1.1 Optimistic Democracy Consensus
-Di GenLayer, saat kontrak menanyakan bentuk penilaian subjektif (misal: *"Apakah desain logo memuaskan?"*), model AI yang berbeda mungkin memberikan jawaban berbeda.
+On GenLayer, when a contract asks for a subjective form of judgment (e.g., *"Is the logo design satisfactory?"*), different AI models might provide different answers.
 
-Konsensus **Optimistic Democracy** berjalan seperti ini:
-1. **Leader Validator** mengeksekusi kontrak (memanggil LLM, menelusuri web, dan memberikan hasil).
-2. **Follower Validators** secara independen memverifikasi (menjalankan logika yang sama dan membandingkan outputnya dengan milik Leader).
-3. Berdasarkan hasil, **Mayoritas Setuju** berarti Transaksi Diterima. Jika Terjadi Ketidaksepakatan, proses Banding (Appeal) akan dipicu.
+The **Optimistic Democracy** consensus works like this:
+1. The **Leader Validator** executes the contract (calls the LLM, browses the web, and provides a result).
+2. The **Follower Validators** independently verify (running the same logic and comparing their outputs with the Leader's).
+3. Based on the results, a **Majority Agreement** means the Transaction is Accepted. If a Disagreement occurs, an Appeal process is triggered.
 
-Sistem ini *optimistic* (dimulai dengan 5 validator agar cepat & murah), *scalable* (bisa ditingkatkan hingga 1.000 validator jika ada sengketa), *AI-native*, dan memberikan insentif/penalti sesuai hasil suara mayoritas.
+This system is *optimistic* (starting with 5 validators to be fast and cheap), *scalable* (can scale up to 1,000 validators in the event of a dispute), *AI-native*, and provides incentives or penalties according to the majority vote.
 
 ### 1.2 The Equivalence Principle
-Jika AI Validator A berkata *"Ya, pekerjaan memuaskan"* dan AI Validator B berkata *"Ya, hasil sesuai persyaratan"*, mereka sebetulnya sepakat meski kalimatnya beda. 
+If AI Validator A says *"Yes, the work is satisfactory"* and AI Validator B says *"Yes, the results meet the requirements"*, they essentially agree even though the phrasing is different.
 
-Sebagai developer, Anda akan mendefinisikan apa arti kata "ekuivalen" untuk setiap operasi non-deterministik. Terdapat dua mode:
-- `gl.eq_principle_strict_eq`: Untuk angka atau True/False (jawaban validator harus identik).
-- `gl.eq_principle_prompt_comparative`: Untuk teks subjektif. LLM lain akan digunakan untuk menilai apakah jawaban antar validator memiliki makna yang sama.
+As a developer, you will define what "equivalent" means for each non-deterministic operation. There are two modes:
+- `gl.eq_principle_strict_eq`: For numbers or True/False (validators' answers must be identical).
+- `gl.eq_principle_prompt_comparative`: For subjective text. Another LLM will be used to judge whether the answers among validators carry the same meaning.
 
 ---
 
-## Part 2: Setup (GenLayer CLI, Studio, dsb)
+## Part 2: Setup (GenLayer CLI, Studio, etc.)
 
-### 2.1 Prasyarat
-Pastikan di sistem Anda sudah terinstal:
+### 2.1 Prerequisites
+Ensure your system has the following installed:
 - Node.js (v18+)
 - Docker (v26+)
 - Python (v3.8+)
@@ -47,78 +47,78 @@ npm install -g genlayer
 genlayer --version
 ```
 
-### 2.3 Jalankan GenLayer Studio
-GenLayer Studio adalah sandbox pengembangan lokal (IDE visual + full GenLayer network via Docker).
+### 2.3 Run GenLayer Studio
+GenLayer Studio is a local development sandbox (visual IDE + full GenLayer network via Docker).
 ```bash
-genlayer init   # Setup untuk pertama kali
-genlayer up     # Menjalankan Studio
+genlayer init   # First-time setup
+genlayer up     # Starts the Studio
 ```
-Buka browser Anda di **http://localhost:8080** atau gunakan versi hosted di **https://studio.genlayer.com**.
+Open your browser at **http://localhost:8080** or use the hosted version at **https://studio.genlayer.com**.
 
 ---
 
 ## Part 3: Python Contract (Dispute Resolver AI Judgment)
 
-Ini adalah **Intelligent Contract** yang kita buat di repositori: `/contracts/dispute_resolver.py`.
+This is the **Intelligent Contract** we are building in the repository: `/contracts/dispute_resolver.py`.
 
-Alur kerjanya:
-1. **Employer** membuat komplain dengan bukti (URL).
-2. **Worker** memberi pembelaan dengan bukti (URL).
-3. Fungsi `resolve_dispute()` dipanggil, AI akan membaca kedua bukti dan menentukan pemenang.
-4. Dana langsung dicairkan ke pemenang.
+The workflow is as follows:
+1. The **Employer** submits a complaint with evidence (URL).
+2. The **Worker** submits a defense with evidence (URL).
+3. The `resolve_dispute()` function is called, and the AI reads both pieces of evidence to determine the winner.
+4. Funds are automatically disbursed to the winner.
 
-### Potongan Kode Penting:
-Di dalam Python, bagian *AI magic* dibungkus dalam blok non-deterministik sebagai plain function:
+### Key Code Snippet:
+In Python, the *AI magic* part is wrapped in a non-deterministic block as a plain function:
 
 ```python
-# Bagian dari file dispute_resolver.py
+# Part of the dispute_resolver.py file
 def ai_judgment() -> str:
-    # Membaca web dan informasi dari parameter
+    # Read the web and information from parameters
     employer_evidence = gl.get_webpage(employer_url, mode="text")
     worker_evidence = gl.get_webpage(worker_url, mode="text")
     
-    prompt = f"""Posisikan dirimu sebagai dewan arbitrase netral untuk sengketa ini.
-    ... Deskripsi Pekerjaan, Klaim Employer, Pembelaan Worker ...
-    Tentukan pemenangnya: EMPLOYER atau WORKER.
+    prompt = f"""Act as a neutral arbitration board for this dispute.
+    ... Job Description, Employer's Claim, Worker's Defense ...
+    Determine the winner: EMPLOYER or WORKER.
     """
     return gl.exec_prompt(prompt)
 
-# Menggunakan Equivalence Principle untuk mencari kesepakatan
+# Using the Equivalence Principle to find an agreement
 verdict = gl.eq_principle_prompt_comparative(
     ai_judgment,
-    "Apakah respons tersebut dengan jelas menyatakan EMPLOYER atau WORKER? Kesepakatan dicapai jika mereka memberikan kemenangan pada pihak yang sama."
+    "Does the response clearly state EMPLOYER or WORKER? An agreement is reached if they award the victory to the same party."
 )
 ```
 
-Setelah kesepakatan (*verdict*) tercapai oleh mayoritas validator, proses *state update* (menentukan `self.winner`) berjalan secara **deterministik**.
+Once an agreement (*verdict*) is reached by the majority of validators, the *state update* process (determining `self.winner`) executes **deterministically**.
 
 ---
 
-## Part 4: Testing di GenLayer Studio
+## Part 4: Testing in GenLayer Studio
 
-1. Buka GenLayer Studio (**http://localhost:8080**).
-2. Klik **"New Contract"**, paste kode `dispute_resolver.py` yang sudah dibuat.
-3. Masukkan parameter *constructor* (alamat `worker`, pesan `job_description`, dan `value` sejumlah aset escrow).
-4. Klik **Deploy** dan salin *Contract Address* yang dihasilkan.
+1. Open GenLayer Studio (**http://localhost:8080**).
+2. Click **"New Contract"**, paste the written code for `dispute_resolver.py`.
+3. Enter the *constructor* parameters (the `worker` address, `job_description` message, and `value` representing the escrow asset amount).
+4. Click **Deploy** and copy the generated *Contract Address*.
 
-Sebagai simulasi UI Studio, Anda bisa:
-- Memanggil metode `submit_employer_evidence` (dengan URL bukti klaim/keluhan).
-- Beralih ke alamat *worker* dan panggil `submit_worker_evidence` (URL bukti laporan kerja).
-- Memanggil `resolve_dispute()`. Di panel Studio, 5 simulator AI validator akan berdiskusi. Hasil menang akan tampak di metode `get_dispute_details()` sebagai `status: resolved`.
+To simulate the Studio UI, you can:
+- Call the `submit_employer_evidence` method (passing the URL for the claim/complaint evidence).
+- Switch to the *worker* address and call `submit_worker_evidence` (URL for the work report evidence).
+- Call `resolve_dispute()`. In the Studio panel, 5 simulated AI validators will deliberate. The winning outcome will appear in the `get_dispute_details()` method as `status: resolved`.
 
 ---
 
-## Part 5: React + genlayer-js frontend
+## Part 5: React + genlayer-js Frontend
 
-Di folder `/frontend` (Next.js), Anda menggunakan instalasi `genlayer-js`.
+In the `/frontend` directory (Next.js), you utilize the `genlayer-js` installation.
 
 ```bash
 npm install genlayer-js
 ```
 
-Frontend ini membaca status dari GenLayer menggunakan `@tanstack/react-query` dan menangani *writeContract* layaknya di Web3 biasa, namun terhubung langsung ke Localnet/Testnet.
+This frontend reads the state from GenLayer using `@tanstack/react-query` and handles *writeContract* just like in regular Web3 apps, but it connects directly to the Localnet/Testnet.
 
-Contoh konfigurasi `genlayer.ts`:
+Example configuration in `genlayer.ts`:
 ```typescript
 import { createClient, createAccount } from "genlayer-js";
 import { localnet } from "genlayer-js/chains";
@@ -131,50 +131,50 @@ export const client = createClient({
 export const CONTRACT_ADDRESS = import.meta.env.VITE_CONTRACT_ADDRESS as `0x${string}`;
 ```
 
-Pengguna dapat berinteraksi melampirkan URL, dan dengan tombol *Resolve*, sistem API `genlayer-js` akan berinteraksi menjalankan proses di belakang layar, lalu mengembalikan transaksi ketika setatus sudah `FINALIZED`.
+Users can interact by attaching a URL, and by pressing the *Resolve* button, the `genlayer-js` API system will execute the background process, eventually returning a transaction once the status is `FINALIZED`.
 
 ---
 
-## Part 6: Diagram AI Resolution
+## Part 6: AI Resolution Diagram
 
-Apa yang sebenarnya terjadi di belakang ketika Anda meng-klik tombol *"Resolve with AI"*?
+What truly happens behind the scenes when you click the *"Resolve with AI"* button?
 
 ```text
-Pengguna (Mengeklik Resolve Dispue)
+User (Clicks Resolve Dispute)
        ↓ 
-[genlayer-js] mengirim transaksi ke Jaringan GenLayer
+[genlayer-js] sends a transaction to the GenLayer Network
        ↓ 
-[Network] Memilih 5 Validators
+[Network] Selects 5 Validators
        ↓ 
 Validator 1 (Leader): 
  - Fetches employer_url & worker_url.
- - Memanggil LLM untuk keputusan.
- - Proposes hasilnya: "WORKER menang karena spesifikasi terpenuhi"
+ - Calls the LLM for a decision.
+ - Proposes the result: "WORKER wins because specifications are met"
        ↓ 
 Validator 2-5 (Followers):
- - Fetching independen, juga mengeksekusi LLM-nya masing-masing.
- - Mendapat kesimpulan sejenis yang memenangkan WORKER.
+ - Independently fetch and also execute their respective LLMs.
+ - Arrive at a similar conclusion that favors the WORKER.
        ↓ 
 [Equivalence Principle Check]:
- - Apakah semantic keputusannya sepakat WORKER? Ya. ✓
- - Konsensus tercapai.
+ - Do the semantics of the decisions agree on WORKER? Yes. ✓
+ - Consensus is reached.
        ↓ 
-*State Blockchain Diperbarui*
+*Blockchain State is Updated*
        ↓ 
-UI di Frontend otomatis memuat hasil akhir.
+The Frontend UI automatically loads the final result.
 ```
 
 ---
 
-## Part 7: Next Steps & Pengembangan Lanjutan
+## Part 7: Next Steps & Further Development
 
-Selamat! Anda telah memiliki dApp arbitrase fungsional. Beberapa ide untuk pengembangan selanjutnya:
+Congratulations! You now have a functional arbitration dApp. Here are some ideas for further development:
 
-- **Refund Berbasis Deadline**: Fitur *auto-refund* jika bukti tidak dikirimkan ke dalam waktu N-block penciptaan (karena macet).
-- **Sistem Appeal**: Menambahkan opsi untuk memperbanyak eskalasi jumlah validator GenLayer.
-- **Storage Bukti Secara Desentralisasi**: Menggunakan IPFS (contoh: Pinata) dibandingkan hanya menyalin URL raw.
+- **Deadline-Based Refunds**: An *auto-refund* feature if evidence is not submitted within N blocks of creation (due to a deadlock).
+- **Appeal System**: Adding an option to escalate and increase the number of GenLayer validators.
+- **Decentralized Evidence Storage**: Utilizing IPFS (e.g., Pinata) rather than just copying raw URLs.
 
-Dengan alat yang sudah Anda pelajari; ide seperti sistem *AI Oracle*, *P2P Betting Subjektif*, atau *Sistem Reputasi Worker Otomatis* sekarang bisa diwujudkan dengan cerdas di **GenLayer**.
+With the tools you've learned, ideas like an *AI Oracle* system, *Subjective P2P Betting*, or an *Automated Worker Reputation System* can now be intelligently built on **GenLayer**.
 
-Jangan lupa mengeksplor kode dan berkontribusi langsung ke repositori sumber:
+Don't forget to explore the code and contribute directly to the source repository:
 [https://github.com/yoiioy700/genlayer-dispute-resolver](https://github.com/yoiioy700/genlayer-dispute-resolver)
