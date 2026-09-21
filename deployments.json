@@ -1,21 +1,21 @@
 {
   "contract_name": "AIArbitratorEscrow",
-  "version": "1.1.0-hardened",
+  "version": "1.2.0-deterministic-consensus",
   "deployments": [
     {
       "network": "testnet-asimov",
       "chain_id": 4221,
       "rpc": "https://rpc-asimov.genlayer.com",
-      "contract_address": "0x97fA8a8C34994477C17cc44933bA0B2203372760",
-      "deploy_tx": "0xffde5b3c978b51f07421bac353258e884c2ca92d23be26c48466737240560000",
+      "contract_address": "0xe822FA3A2b6aA657EddBEbbFF8dC1F9926695e36",
+      "deploy_tx": "0xef703e0cc9ecd9ff9b2484f02d907c4be7b2d55a8a2d17b5fa770b1de2cf4308",
       "status": "FINALIZED",
       "consensus_result": "AGREE",
       "execution_result": "FINISHED_WITH_RETURN",
-      "explorer_url": "https://explorer-asimov.genlayer.com/address/0x97fA8a8C34994477C17cc44933bA0B2203372760",
+      "explorer_url": "https://explorer-asimov.genlayer.com/address/0xe822FA3A2b6aA657EddBEbbFF8dC1F9926695e36",
       "verified_transactions": {
-        "create_case": "0x649a9120c19ac4fcfa68523e2e3f737e6e50f3ef4c275039e80288f2bfa61553",
-        "submit_deliverable": "0x4a1631de91d4c1b3089c60c6ed29d85f060870b57779c11b6bd40735d71094b8",
-        "adjudicate_dispute": "0x7a17f44ef44fccdb2b852a11b5382440e63fe87ba292df150cf9a0c5cbbe30e5"
+        "create_case": "0x586510d1a4a368f751c5078cda6c3dc1c30ef8d1adfc9163daa2503924617430",
+        "submit_deliverable": "0xaa359af6a77e621836f896227a1a536fea505b740b2b8aac857a94adb9c97c0c",
+        "adjudicate_dispute": "0x5e212ffca4c4191924e456da0eb509787c8897401f258481d3d87ddcbd1446a3"
       }
     }
   ]

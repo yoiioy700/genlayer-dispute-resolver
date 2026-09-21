@@ -10,8 +10,8 @@ When clients and freelancers face milestone disagreements, GenLayer AI validator
 
 1. **Deterministic State Partition:**
    Contract state (`TreeMap[str, DisputeCase]`) stores verified case metadata, agreed requirement briefs, deliverable proof, and final adjudication outcomes with native `u256` integer typing.
-2. **Equivalence Principle Consensus (`strict_eq`):**
-   Non-deterministic natural-language reasoning is isolated in `gl.nondet.exec_prompt`. Validator committees evaluate deliverable fulfillment against the requirement brief and reach semantic consensus on fund allocation (`FREELANCER`, `CLIENT`, or `SPLIT`).
+2. **Deterministic Equivalence Principle Consensus (`strict_eq`):**
+   Non-deterministic natural-language reasoning is isolated in `gl.nondet.exec_prompt`. Validator committees evaluate deliverable fulfillment against the requirement brief and reach semantic consensus on fund allocation (`FREELANCER`, `CLIENT`, or `SPLIT`). To prevent validator rotation timeouts from subtle text variances, verdict normalization occurs before strict equivalence hashing.
 3. **Storage Boundary Enforcement:**
    Storage data is strictly copied into local string primitives before entering non-deterministic closures, preventing GenVM sub-VM pickling warnings and memory sandbox violations.
 
@@ -30,13 +30,13 @@ When clients and freelancers face milestone disagreements, GenLayer AI validator
 
 | Network | Chain ID | Contract Address | Status | Explorer |
 | :--- | :--- | :--- | :--- | :--- |
-| **GenLayer Asimov Testnet** | 4221 | `0x97fA8a8C34994477C17cc44933bA0B2203372760` | Finalized (`FINISHED_WITH_RETURN`) | [View on Asimov Explorer](https://explorer-asimov.genlayer.com/address/0x97fA8a8C34994477C17cc44933bA0B2203372760) |
+| **GenLayer Asimov Testnet** | 4221 | `0xe822FA3A2b6aA657EddBEbbFF8dC1F9926695e36` | Finalized (`FINISHED_WITH_RETURN`) | [View on Asimov Explorer](https://explorer-asimov.genlayer.com/address/0xe822FA3A2b6aA657EddBEbbFF8dC1F9926695e36) |
 
 ### On-Chain Transaction Proofs:
-* **Contract Deploy:** [`0xffde5b3c978b51f07421bac353258e884c2ca92d23be26c48466737240560000`](https://explorer-asimov.genlayer.com/tx/0xffde5b3c978b51f07421bac353258e884c2ca92d23be26c48466737240560000)
-* **Create Case Tx:** [`0x649a9120c19ac4fcfa68523e2e3f737e6e50f3ef4c275039e80288f2bfa61553`](https://explorer-asimov.genlayer.com/tx/0x649a9120c19ac4fcfa68523e2e3f737e6e50f3ef4c275039e80288f2bfa61553)
-* **Submit Deliverable Tx:** [`0x4a1631de91d4c1b3089c60c6ed29d85f060870b57779c11b6bd40735d71094b8`](https://explorer-asimov.genlayer.com/tx/0x4a1631de91d4c1b3089c60c6ed29d85f060870b57779c11b6bd40735d71094b8)
-* **AI Consensus Adjudication Tx:** [`0x7a17f44ef44fccdb2b852a11b5382440e63fe87ba292df150cf9a0c5cbbe30e5`](https://explorer-asimov.genlayer.com/tx/0x7a17f44ef44fccdb2b852a11b5382440e63fe87ba292df150cf9a0c5cbbe30e5)
+* **Contract Deploy:** [`0xef703e0cc9ecd9ff9b2484f02d907c4be7b2d55a8a2d17b5fa770b1de2cf4308`](https://explorer-asimov.genlayer.com/tx/0xef703e0cc9ecd9ff9b2484f02d907c4be7b2d55a8a2d17b5fa770b1de2cf4308)
+* **Create Case Tx:** [`0x586510d1a4a368f751c5078cda6c3dc1c30ef8d1adfc9163daa2503924617430`](https://explorer-asimov.genlayer.com/tx/0x586510d1a4a368f751c5078cda6c3dc1c30ef8d1adfc9163daa2503924617430)
+* **Submit Deliverable Tx:** [`0xaa359af6a77e621836f896227a1a536fea505b740b2b8aac857a94adb9c97c0c`](https://explorer-asimov.genlayer.com/tx/0xaa359af6a77e621836f896227a1a536fea505b740b2b8aac857a94adb9c97c0c)
+* **AI Consensus Adjudication Tx (RESOLVED):** [`0x5e212ffca4c4191924e456da0eb509787c8897401f258481d3d87ddcbd1446a3`](https://explorer-asimov.genlayer.com/tx/0x5e212ffca4c4191924e456da0eb509787c8897401f258481d3d87ddcbd1446a3)
 
 ---
 

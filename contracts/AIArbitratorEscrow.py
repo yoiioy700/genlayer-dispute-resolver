@@ -122,31 +122,41 @@ Submitted Deliverable:
 
 Analyze whether the deliverable fulfills the agreed requirements.
 Decide the verdict:
-- "FREELANCER" if requirements are fully or substantially met (100% to freelancer).
-- "CLIENT" if deliverable is entirely missing, fraudulent, or failed (0% to freelancer).
+- "FREELANCER" if requirements are fully or substantially met.
+- "CLIENT" if deliverable is entirely missing, fraudulent, or failed.
 - "SPLIT" if partially completed.
 
-Respond ONLY with valid JSON with this exact schema:
+Respond ONLY with valid JSON with this schema:
 {{
-    "verdict": "FREELANCER" | "CLIENT" | "SPLIT",
-    "client_share_pct": int, // 0 if FREELANCER, 100 if CLIENT, or 50 if SPLIT
-    "reason": "concise explanation"
+    "verdict": "FREELANCER" | "CLIENT" | "SPLIT"
 }}
 """
             res = gl.nondet.exec_prompt(prompt, response_format="json")
-            return json.dumps(res, sort_keys=True)
+            raw_v = str(res.get("verdict", "SPLIT")).strip().upper()
+            if raw_v not in ["FREELANCER", "CLIENT", "SPLIT"]:
+                raw_v = "SPLIT"
+
+            pct = 0 if raw_v == "FREELANCER" else (100 if raw_v == "CLIENT" else 50)
+            return json.dumps({"verdict": raw_v, "client_share_pct": pct}, sort_keys=True)
 
         # Reach consensus across validator committee using Equivalence Principle
         consensus_res_str = gl.eq_principle.strict_eq(evaluate_case)
         result = json.loads(consensus_res_str)
 
-        case.verdict = result.get("verdict", "SPLIT")
-        case.client_share_pct = u256(int(result.get("client_share_pct", 50)))
-        case.reason = result.get("reason", "Consensus adjudication")
+        verdict = result.get("verdict", "SPLIT")
+        pct = int(result.get("client_share_pct", 50))
+
+        case.verdict = verdict
+        case.client_share_pct = u256(pct)
+        case.reason = f"Consensus reached by GenLayer validators: {verdict} ({pct}% refund to client)"
         case.status = "RESOLVED"
         self.cases[case_id] = case
 
-        return result
+        return {
+            "verdict": verdict,
+            "client_share_pct": pct,
+            "reason": case.reason
+        }
 
     @gl.public.view
     def get_case(self, case_id: str) -> dict:
