@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { createClient, chains } from "genlayer-js";
 
-const CONTRACT_ADDRESS = "0x64aFc980756962EB610CA1eD0e1c852A2EEd3375";
+const CONTRACT_ADDRESS = "0x97fA8a8C34994477C17cc44933bA0B2203372760";
 const EXPLORER_BASE = "https://explorer-asimov.genlayer.com";
 
 interface OnChainCase {

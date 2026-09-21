@@ -36,6 +36,16 @@ class AIArbitratorEscrow(gl.Contract):
         amount_wei: u256,
         requirements: str
     ) -> str:
+        # Invariant 1: Prevent case collision / overwrite attack
+        if case_id in self.cases:
+            raise gl.vm.UserError("Case ID already exists")
+
+        if len(case_id.strip()) == 0:
+            raise gl.vm.UserError("Case ID cannot be empty")
+
+        if len(requirements.strip()) < 10:
+            raise gl.vm.UserError("Requirements must be at least 10 characters")
+
         client_addr = gl.message.sender_address
         freelancer = Address(freelancer_addr) if isinstance(freelancer_addr, (str, bytes)) else freelancer_addr
         
@@ -57,15 +67,46 @@ class AIArbitratorEscrow(gl.Contract):
 
     @gl.public.write
     def submit_deliverable(self, case_id: str, deliverable: str) -> None:
+        if case_id not in self.cases:
+            raise gl.vm.UserError("Case does not exist")
+
         case = self.cases[case_id]
+
+        # Invariant 2: Access Control - Only designated freelancer or client can submit
+        sender = gl.message.sender_address
+        if sender != case.freelancer and sender != case.client:
+            raise gl.vm.UserError("Only freelancer or client can submit deliverable")
+
+        # Invariant 3: State machine - Cannot update after final resolution
+        if case.status == "RESOLVED":
+            raise gl.vm.UserError("Cannot submit deliverable to a resolved case")
+
+        if len(deliverable.strip()) == 0:
+            raise gl.vm.UserError("Deliverable cannot be empty")
+
         case.deliverable = deliverable
         case.status = "SUBMITTED"
         self.cases[case_id] = case
 
     @gl.public.write
     def adjudicate_dispute(self, case_id: str) -> dict:
+        if case_id not in self.cases:
+            raise gl.vm.UserError("Case does not exist")
+
         case = self.cases[case_id]
-        
+
+        # Invariant 4: Access Control - Only parties to the escrow can request adjudication
+        sender = gl.message.sender_address
+        if sender != case.client and sender != case.freelancer:
+            raise gl.vm.UserError("Only client or freelancer can request adjudication")
+
+        # Invariant 5: State machine - Must have deliverable submitted & not yet resolved
+        if case.status == "RESOLVED":
+            raise gl.vm.UserError("Case has already been adjudicated and resolved")
+
+        if case.status != "SUBMITTED":
+            raise gl.vm.UserError("Deliverable must be submitted before dispute adjudication")
+
         # Extract storage values to local primitive strings before nondet execution
         req_text = str(case.requirements)
         deliv_text = str(case.deliverable)
@@ -109,6 +150,9 @@ Respond ONLY with valid JSON with this exact schema:
 
     @gl.public.view
     def get_case(self, case_id: str) -> dict:
+        if case_id not in self.cases:
+            raise gl.vm.UserError("Case does not exist")
+
         case = self.cases[case_id]
         return {
             "case_id": case.case_id,
