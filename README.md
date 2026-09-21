@@ -1,75 +1,70 @@
-# ⚖️ GenLayer Freelance Escrow & AI Dispute Resolver
+# AI Arbitrator Escrow - GenLayer Intelligent Contract
 
-A decentralized escrow and milestone arbitration system built as a **GenLayer Intelligent Contract**. When clients and freelancers disagree on deliverables, decentralized AI validators independently analyze project criteria, deliverable content, and party claims to reach consensus on fund allocation using GenLayer's **Optimistic Democracy** and **Equivalence Principle**.
+A decentralized, autonomous escrow and dispute adjudication Intelligent Contract built on **GenLayer**.
 
-> **About GenLayer:** GenLayer is the first adjudication layer for the agentic economy — enabling smart contracts to reason, evaluate natural language, and settle subjective disputes trustlessly on-chain without human bottlenecks.
-
----
-
-## 🎯 Key Features
-
-1. **Milestone Escrow:** Client locks funds on-chain for freelance deliverables with verifiable specifications.
-2. **AI Dispute Adjudication:** If work quality or completion is contested, GenLayer AI validators evaluate:
-   - Original task specifications
-   - Submitted deliverable content
-   - Client and Freelancer arguments
-3. **Consensus-Backed Fairness:** Multiple validators independently assess the dispute using LLMs via `gl.nondet.exec_prompt()` and agree on the payout ratio (0-100%).
-4. **Equivalence Principle:** Results are checked for semantic equivalence (matching decision category and fund allocation within tolerance).
-5. **Fullstack Interface:** Modern Next.js application with escrow dashboard, dispute filing, and real-time AI allocation visualizations.
+When clients and freelancers face milestone disagreements, GenLayer AI validators independently evaluate the agreed job requirements against the submitted deliverables to reach consensus on payout distribution via the **Equivalence Principle**.
 
 ---
 
-## 📁 Repository Structure
+## 🌟 Architecture & Key Invariants
 
+1. **Deterministic State Partition:**
+   Contract state (`TreeMap[str, DisputeCase]`) stores verified case metadata, agreed requirement briefs, deliverable hashes/links, and final adjudication outcomes.
+2. **Equivalence Principle Consensus (`gl.eq_principle.strict_eq`):**
+   Non-deterministic natural-language reasoning is isolated in `gl.nondet.exec_prompt`. Validator committees evaluate the deliverable against the requirement contract and reach semantic consensus on whether to award funds to the freelancer, refund the client, or execute a partial split.
+3. **Ghost Contract Compatibility:**
+   Fully compatible with GenLayer L2 (Chain ID 4221) and Ghost contract execution standards.
+
+---
+
+## 📜 Deployed Contracts
+
+| Network | Chain ID | Contract Address | Status | Explorer |
+| :--- | :--- | :--- | :--- | :--- |
+| **GenLayer Asimov Testnet** | 4221 | `0xFD2C068A93A38Ba95d1ff7EB78b647f80d7A93c2` | Finalized (`FINISHED_WITH_RETURN`) | [View on Asimov Explorer](https://explorer-asimov.genlayer.com/address/0xFD2C068A93A38Ba95d1ff7EB78b647f80d7A93c2) |
+| **GenLayer Bradbury Testnet** | 4221 | `0x9263BC62311614fdcdA0030d2e493B210f133ffc` | Finalized (`FINISHED_WITH_RETURN`) | [View on Bradbury Explorer](https://explorer-bradbury.genlayer.com/address/0x9263BC62311614fdcdA0030d2e493B210f133ffc) |
+
+---
+
+## ⚙️ Contract Interface
+
+### State Structure: `DisputeCase`
+```python
+@allow_storage
+@dataclass
+class DisputeCase:
+    case_id: str
+    client: Address
+    freelancer: Address
+    amount: u256
+    requirements: str
+    deliverable: str
+    status: str  # "CREATED", "SUBMITTED", "RESOLVED"
+    verdict: str  # "CLIENT", "FREELANCER", "SPLIT"
+    client_share_pct: u256
+    reason: str
 ```
-genlayer-dispute-resolver/
-├── contracts/
-│   └── dispute_resolver.py       # GenLayer Intelligent Contract (Python)
-├── frontend/
-│   ├── src/app/
-│   │   ├── page.tsx              # Escrow & Adjudication Dashboard
-│   │   ├── layout.tsx            # Next.js Root Layout
-│   │   └── globals.css           # Modern Dark-Mode UI Styles
-│   └── package.json
-├── tests/
-│   └── test_dispute_resolver.py  # Direct-Mode Unit Tests
-└── README.md
-```
+
+### Write Methods
+* `create_case(case_id: str, freelancer_addr: str, amount_wei: u256, requirements: str) -> str`:
+  Initializes an escrow case funded by the client (`gl.message.sender_address`).
+* `submit_deliverable(case_id: str, deliverable: str) -> None`:
+  Freelancer submits the proof of work (deliverable URL or technical summary).
+* `adjudicate_dispute(case_id: str) -> dict`:
+  Triggers non-deterministic prompt evaluation via GenVM LLM modules. The leader proposes an allocation, and validators reach consensus using `strict_eq`.
+
+### View Methods
+* `get_case(case_id: str) -> dict`: Returns the full case record, payout verdict, and reasoning.
+* `get_total_cases() -> int`: Returns total count of registered cases.
 
 ---
 
-## ⚡ Quick Start
+## 🧪 Testing & Deployment
 
-### 1. Requirements
-- Node.js 18+ & npm
-- Python 3.12+
-- Docker (for GenLayer local node / Studio)
-
-### 2. Deploy Contract
-Launch GenLayer Studio:
+Deployable via `genlayer-js` or GenLayer CLI:
 ```bash
-npx genlayer init
-```
-Open `http://localhost:8080`, paste `contracts/dispute_resolver.py`, and deploy!
-
-### 3. Run Frontend
-```bash
-cd frontend
-npm install
-npm run dev
-```
-Navigate to `http://localhost:3000` to interact with the decentralized escrow dashboard.
-
----
-
-## 🧪 Testing
-
-Run direct-mode in-memory tests:
-```bash
-pytest tests/test_dispute_resolver.py -v
+# Using GenLayer CLI
+genlayer deploy --contract contracts/AIArbitratorEscrow.py
 ```
 
----
-
-## 📜 License
-MIT
+Built with GenLayer standard library and CPython 3.13 WebAssembly sandbox (`py-genlayer`).

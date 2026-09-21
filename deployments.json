@@ -1,0 +1,27 @@
+{
+  "contract_name": "AIArbitratorEscrow",
+  "deployments": [
+    {
+      "network": "testnet-asimov",
+      "chain_id": 4221,
+      "rpc": "https://rpc-asimov.genlayer.com",
+      "contract_address": "0xFD2C068A93A38Ba95d1ff7EB78b647f80d7A93c2",
+      "deploy_tx": "0xcbf24250f6cb3b2325a29055b5f93a8cf82cffff344a100939bebe14b5ee9f08",
+      "status": "FINALIZED",
+      "consensus_result": "AGREE",
+      "execution_result": "FINISHED_WITH_RETURN",
+      "explorer_url": "https://explorer-asimov.genlayer.com/address/0xFD2C068A93A38Ba95d1ff7EB78b647f80d7A93c2"
+    },
+    {
+      "network": "testnet-bradbury",
+      "chain_id": 4221,
+      "rpc": "https://rpc-bradbury.genlayer.com",
+      "contract_address": "0x9263BC62311614fdcdA0030d2e493B210f133ffc",
+      "deploy_tx": "0x5ebed98be69d231c056788520868d4752c1a416148bb622b73269d017833e0fb",
+      "status": "FINALIZED",
+      "consensus_result": "AGREE",
+      "execution_result": "FINISHED_WITH_RETURN",
+      "explorer_url": "https://explorer-bradbury.genlayer.com/address/0x9263BC62311614fdcdA0030d2e493B210f133ffc"
+    }
+  ]
+}
