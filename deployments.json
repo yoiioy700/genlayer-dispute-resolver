@@ -5,23 +5,17 @@
       "network": "testnet-asimov",
       "chain_id": 4221,
       "rpc": "https://rpc-asimov.genlayer.com",
-      "contract_address": "0xde195fC7b3FeA71c0d894ebeE44C4f78D50D707F",
-      "deploy_tx": "0xd2159fa3c1d7b176be51b0db8466ef02bb0c60da81bbf7cb252078fadb9b2241",
+      "contract_address": "0x64aFc980756962EB610CA1eD0e1c852A2EEd3375",
+      "deploy_tx": "0x0873e05fa623d473223d26ea4cc0d2bf6414a91efc128a17c312336d724ef4b9",
       "status": "FINALIZED",
       "consensus_result": "AGREE",
       "execution_result": "FINISHED_WITH_RETURN",
-      "explorer_url": "https://explorer-asimov.genlayer.com/address/0xde195fC7b3FeA71c0d894ebeE44C4f78D50D707F"
-    },
-    {
-      "network": "testnet-bradbury",
-      "chain_id": 4221,
-      "rpc": "https://rpc-bradbury.genlayer.com",
-      "contract_address": "0x9263BC62311614fdcdA0030d2e493B210f133ffc",
-      "deploy_tx": "0x5ebed98be69d231c056788520868d4752c1a416148bb622b73269d017833e0fb",
-      "status": "FINALIZED",
-      "consensus_result": "AGREE",
-      "execution_result": "FINISHED_WITH_RETURN",
-      "explorer_url": "https://explorer-bradbury.genlayer.com/address/0x9263BC62311614fdcdA0030d2e493B210f133ffc"
+      "explorer_url": "https://explorer-asimov.genlayer.com/address/0x64aFc980756962EB610CA1eD0e1c852A2EEd3375",
+      "transactions": {
+        "create_case": "0x04feeca94da4dab86403b0e505cbba587ed15473b2cef18f3ec68276f291d687",
+        "submit_deliverable": "0xfc1903e953d497735415e35007e38a6eed687d78813a9e75727a4715fbfc45c9",
+        "adjudicate_dispute": "0xf877731f71086cf74dbf12c5adbb7515a8543ce78eecce480dad9f735f90eebb"
+      }
     }
   ]
 }

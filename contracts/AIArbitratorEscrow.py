@@ -65,15 +65,19 @@ class AIArbitratorEscrow(gl.Contract):
     @gl.public.write
     def adjudicate_dispute(self, case_id: str) -> dict:
         case = self.cases[case_id]
+        
+        # Extract storage values to local primitive strings before nondet execution
+        req_text = str(case.requirements)
+        deliv_text = str(case.deliverable)
 
         def evaluate_case() -> str:
             prompt = f"""You are a decentralized dispute arbitrator evaluating a freelance delivery.
 
 Requirements:
-{case.requirements}
+{req_text}
 
 Submitted Deliverable:
-{case.deliverable}
+{deliv_text}
 
 Analyze whether the deliverable fulfills the agreed requirements.
 Decide the verdict:
