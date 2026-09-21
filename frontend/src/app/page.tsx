@@ -1,478 +1,492 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { createClient, chains } from "genlayer-js";
 
-interface Job {
-  id: number;
-  title: string;
-  specifications: string;
+const CONTRACT_ADDRESS = "0xde195fC7b3FeA71c0d894ebeE44C4f78D50D707F";
+const EXPLORER_BASE = "https://explorer-asimov.genlayer.com";
+
+interface OnChainCase {
+  case_id: string;
   client: string;
   freelancer: string;
-  payout_amount: number;
+  amount: number;
+  requirements: string;
   deliverable: string;
-  status: "active" | "submitted" | "resolved_completed" | "resolved_disputed";
-  client_pct: number;
-  freelancer_pct: number;
-  verdict_reason: string;
+  status: string;
+  verdict: string;
+  client_share_pct: number;
+  reason: string;
 }
 
-const INITIAL_JOBS: Job[] = [
-  {
-    id: 0,
-    title: "Design Responsive Landing Page for DeFi Protocol",
-    specifications:
-      "Deliver Figma design with complete mobile & desktop views, dark mode color palette (#060913 base), glassmorphism components, and exported SVG assets.",
-    client: "0x7B2a...9E10",
-    freelancer: "0x3F4c...A219",
-    payout_amount: 1500,
-    deliverable:
-      "Figma link delivered with full desktop layouts and components. Mobile layout was submitted as wireframe only due to short timeline.",
-    status: "resolved_disputed",
-    client_pct: 35,
-    freelancer_pct: 65,
-    verdict_reason:
-      "[SPLIT] Freelancer fulfilled the core desktop designs and components excellently, but missed full mobile fidelity spec. Awarded 65% to freelancer and 35% refund to client.",
-  },
-  {
-    id: 1,
-    title: "Python Web Scraping & Data Pipeline for Crypto Prices",
-    specifications:
-      "Python 3.12 async scraper using aiohttp to fetch live orderbook data from 3 DEXes every 5 seconds, storing into PostgreSQL with unit tests.",
-    client: "0x1A8b...C394",
-    freelancer: "0x9E4d...F820",
-    payout_amount: 800,
-    deliverable:
-      "GitHub repo delivered with async scraper, docker-compose PostgreSQL setup, and 95% test coverage passing.",
-    status: "resolved_completed",
-    client_pct: 0,
-    freelancer_pct: 100,
-    verdict_reason: "Client directly approved deliverable with 100% payout.",
-  },
-  {
-    id: 2,
-    title: "Write Smart Contract Security Audit Report",
-    specifications:
-      "Comprehensive audit report covering reentrancy, access control, frontrunning risks for 4 Solidity contracts with severity classifications.",
-    client: "0x5C2e...D147",
-    freelancer: "0x8B1a...E633",
-    payout_amount: 2200,
-    deliverable:
-      "Full 18-page PDF report with 3 High, 2 Medium, 5 Low vulnerabilities detailed with remediation snippets.",
-    status: "submitted",
-    client_pct: 0,
-    freelancer_pct: 0,
-    verdict_reason: "",
-  },
-];
-
 export default function Home() {
-  const [jobs, setJobs] = useState<Job[]>(INITIAL_JOBS);
-  const [title, setTitle] = useState("");
-  const [specs, setSpecs] = useState("");
-  const [freelancer, setFreelancer] = useState("");
-  const [amount, setAmount] = useState("");
+  const [account, setAccount] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<"create" | "deliver" | "dispute" | "view">("create");
   const [isProcessing, setIsProcessing] = useState(false);
+  const [statusMessage, setStatusMessage] = useState<string | null>(null);
+  const [lastTxHash, setLastTxHash] = useState<string | null>(null);
 
-  // Dispute modal / inputs
-  const [activeJobForDispute, setActiveJobForDispute] = useState<number | null>(
-    null
-  );
-  const [clientClaim, setClientClaim] = useState("");
-  const [freelancerClaim, setFreelancerClaim] = useState("");
+  // Form states
+  const [caseId, setCaseId] = useState("");
+  const [freelancerAddr, setFreelancerAddr] = useState("");
+  const [amountWei, setAmountWei] = useState("1");
+  const [requirements, setRequirements] = useState("");
+  const [deliverableText, setDeliverableText] = useState("");
 
-  const handleCreateJob = (e: React.FormEvent) => {
+  // Inspect state
+  const [inspectId, setInspectId] = useState("case_escrow_01");
+  const [inspectedCase, setInspectedCase] = useState<OnChainCase | null>(null);
+  const [totalCases, setTotalCases] = useState<number | null>(null);
+
+  // Initialize public client for reads
+  const getPublicClient = () => {
+    return createClient({ chain: chains.testnetAsimov });
+  };
+
+  // Connect wallet
+  const connectWallet = async () => {
+    if (typeof window !== "undefined" && (window as any).ethereum) {
+      try {
+        const accounts = await (window as any).ethereum.request({
+          method: "eth_requestAccounts",
+        });
+        if (accounts && accounts.length > 0) {
+          setAccount(accounts[0]);
+        }
+      } catch (err: any) {
+        setStatusMessage(`Wallet connection failed: ${err.message}`);
+      }
+    } else {
+      setStatusMessage("MetaMask or compatible Web3 wallet not detected.");
+    }
+  };
+
+  // Fetch contract stats
+  const fetchTotalCases = async () => {
+    try {
+      const client = getPublicClient();
+      const count = await client.readContract({
+        address: CONTRACT_ADDRESS,
+        functionName: "get_total_cases",
+        args: [],
+      });
+      setTotalCases(Number(count));
+    } catch (e) {
+      console.warn("Failed to fetch total cases:", e);
+    }
+  };
+
+  useEffect(() => {
+    fetchTotalCases();
+  }, []);
+
+  // 1. Create Case
+  const handleCreateCase = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!title || !specs || !freelancer || !amount) return;
+    if (!caseId || !freelancerAddr || !requirements) {
+      setStatusMessage("Please fill in all required fields.");
+      return;
+    }
 
-    const newJob: Job = {
-      id: jobs.length,
-      title,
-      specifications: specs,
-      client: "0xYou...User",
-      freelancer,
-      payout_amount: Number(amount),
-      deliverable: "",
-      status: "active",
-      client_pct: 0,
-      freelancer_pct: 0,
-      verdict_reason: "",
-    };
-
-    setJobs([newJob, ...jobs]);
-    setTitle("");
-    setSpecs("");
-    setFreelancer("");
-    setAmount("");
-  };
-
-  const handleTriggerDispute = async (jobId: number) => {
-    if (!clientClaim || !freelancerClaim) return;
     setIsProcessing(true);
+    setStatusMessage("Submitting create_case transaction to GenLayer Asimov...");
+    setLastTxHash(null);
 
-    // Simulate AI Consensus
-    await new Promise((r) => setTimeout(r, 2500));
+    try {
+      const client = createClient({
+        chain: chains.testnetAsimov,
+      });
 
-    const freelancerPct = Math.floor(Math.random() * 40) + 40; // 40-80%
-    const clientPct = 100 - freelancerPct;
-    const decision =
-      freelancerPct > 60
-        ? "FAVOR_FREELANCER"
-        : freelancerPct < 40
-        ? "FAVOR_CLIENT"
-        : "SPLIT";
+      const tx = await client.writeContract({
+        address: CONTRACT_ADDRESS,
+        functionName: "create_case",
+        args: [caseId, freelancerAddr, BigInt(amountWei), requirements],
+        value: 0n,
+      });
 
-    setJobs((prev) =>
-      prev.map((j) =>
-        j.id === jobId
-          ? {
-              ...j,
-              status: "resolved_disputed",
-              freelancer_pct: freelancerPct,
-              client_pct: clientPct,
-              verdict_reason: `[${decision}] GenLayer AI consensus determined that freelancer gets ${freelancerPct}% and client receives ${clientPct}% refund based on deliverable quality vs requirements.`,
-            }
-          : j
-      )
-    );
+      setLastTxHash(tx);
+      setStatusMessage(`Transaction broadcasted: ${tx}. Waiting for consensus...`);
 
-    setIsProcessing(false);
-    setActiveJobForDispute(null);
-    setClientClaim("");
-    setFreelancerClaim("");
+      const receipt = await client.waitForTransactionReceipt({ hash: tx });
+      setStatusMessage(`Case "${caseId}" created successfully! Status: ${receipt.statusName || "ACCEPTED"}`);
+      fetchTotalCases();
+      setCaseId("");
+      setFreelancerAddr("");
+      setRequirements("");
+    } catch (err: any) {
+      setStatusMessage(`Transaction error: ${err.message || String(err)}`);
+    } finally {
+      setIsProcessing(false);
+    }
   };
 
-  const totalEscrow = jobs.reduce((acc, j) => acc + j.payout_amount, 0);
-  const disputedCount = jobs.filter(
-    (j) => j.status === "resolved_disputed"
-  ).length;
+  // 2. Submit Deliverable
+  const handleSubmitDeliverable = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!caseId || !deliverableText) {
+      setStatusMessage("Please specify Case ID and deliverable proof.");
+      return;
+    }
+
+    setIsProcessing(true);
+    setStatusMessage("Submitting deliverable on-chain...");
+    setLastTxHash(null);
+
+    try {
+      const client = createClient({
+        chain: chains.testnetAsimov,
+      });
+
+      const tx = await client.writeContract({
+        address: CONTRACT_ADDRESS,
+        functionName: "submit_deliverable",
+        args: [caseId, deliverableText],
+        value: 0n,
+      });
+
+      setLastTxHash(tx);
+      setStatusMessage(`Deliverable tx broadcasted: ${tx}. Waiting for block inclusion...`);
+      await client.waitForTransactionReceipt({ hash: tx });
+      setStatusMessage(`Deliverable for "${caseId}" recorded on GenLayer!`);
+      setDeliverableText("");
+    } catch (err: any) {
+      setStatusMessage(`Error: ${err.message || String(err)}`);
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  // 3. Adjudicate Dispute via AI Consensus
+  const handleAdjudicate = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!caseId) {
+      setStatusMessage("Please specify Case ID to adjudicate.");
+      return;
+    }
+
+    setIsProcessing(true);
+    setStatusMessage("Triggering GenLayer Equivalence Principle consensus across AI validator committee...");
+    setLastTxHash(null);
+
+    try {
+      const client = createClient({
+        chain: chains.testnetAsimov,
+      });
+
+      const tx = await client.writeContract({
+        address: CONTRACT_ADDRESS,
+        functionName: "adjudicate_dispute",
+        args: [caseId],
+        value: 0n,
+      });
+
+      setLastTxHash(tx);
+      setStatusMessage(`Adjudication tx sent: ${tx}. AI Validators are voting...`);
+      const receipt = await client.waitForTransactionReceipt({ hash: tx });
+      setStatusMessage(`Adjudication completed! Consensus result: ${receipt.resultName || "AGREE"}`);
+      
+      // Auto inspect the case after resolution
+      handleInspectCase(caseId);
+    } catch (err: any) {
+      setStatusMessage(`Adjudication failed: ${err.message || String(err)}`);
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  // 4. View Case on-chain
+  const handleInspectCase = async (targetId?: string) => {
+    const queryId = targetId || inspectId;
+    if (!queryId) return;
+
+    setStatusMessage(`Reading case "${queryId}" directly from GenLayer Asimov state...`);
+    try {
+      const client = getPublicClient();
+      const res = await client.readContract({
+        address: CONTRACT_ADDRESS,
+        functionName: "get_case",
+        args: [queryId],
+      });
+      setInspectedCase(res as unknown as OnChainCase);
+      setStatusMessage(`Case "${queryId}" loaded from on-chain storage.`);
+    } catch (err: any) {
+      setInspectedCase(null);
+      setStatusMessage(`Case not found or not yet registered: ${err.message || String(err)}`);
+    }
+  };
 
   return (
-    <div className="container">
-      {/* Nav */}
-      <nav className="navbar">
-        <div className="logo">
-          <span>⚖️ GenLayer Escrow</span>
-          <span className="logo-badge">Intelligent Contract</span>
-        </div>
-        <div>
-          <span
-            style={{
-              fontSize: 13,
-              color: "var(--accent-cyan)",
-              fontWeight: 600,
-            }}
-          >
-            ● GenLayer Studio Connected
+    <div className="container" style={{ maxWidth: 1100, margin: "0 auto", padding: "2rem 1.5rem" }}>
+      {/* Top Navbar */}
+      <nav className="navbar" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "2.5rem" }}>
+        <div className="logo" style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+          <span style={{ fontSize: 22, fontWeight: 700 }}>⚖️ GenLayer Escrow</span>
+          <span className="logo-badge" style={{ fontSize: 11, background: "rgba(6, 182, 212, 0.15)", color: "var(--accent-cyan)", padding: "3px 8px", borderRadius: 6, border: "1px solid rgba(6, 182, 212, 0.3)" }}>
+            Asimov Testnet
           </span>
+        </div>
+        <div style={{ display: "flex", alignItems: "center", gap: "15px" }}>
+          <a
+            href={`${EXPLORER_BASE}/address/${CONTRACT_ADDRESS}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{ fontSize: 12, color: "var(--text-secondary)", textDecoration: "none" }}
+          >
+            Contract: {CONTRACT_ADDRESS.slice(0, 6)}...{CONTRACT_ADDRESS.slice(-4)} ↗
+          </a>
+          {account ? (
+            <span style={{ fontSize: 13, background: "rgba(255, 255, 255, 0.05)", padding: "6px 14px", borderRadius: 8, border: "1px solid var(--border-glass)" }}>
+              {account.slice(0, 6)}...{account.slice(-4)}
+            </span>
+          ) : (
+            <button
+              onClick={connectWallet}
+              style={{ background: "var(--gradient-main)", color: "#fff", border: "none", padding: "8px 16px", borderRadius: 8, fontWeight: 600, cursor: "pointer", fontSize: 13 }}
+            >
+              Connect Wallet
+            </button>
+          )}
         </div>
       </nav>
 
-      {/* Hero */}
-      <section className="hero">
-        <div className="hero-pill">🤖 The Adjudication Layer for Work</div>
-        <h1>
-          Decentralized Freelance Escrow &{" "}
-          <span className="gradient-text">AI Dispute Resolution</span>
+      {/* Hero Section */}
+      <header style={{ textAlign: "center", marginBottom: "3rem" }}>
+        <h1 style={{ fontSize: "2.5rem", fontWeight: 800, marginBottom: "0.8rem", letterSpacing: "-0.03em" }}>
+          Decentralized Freelance Escrow & <span style={{ background: "var(--gradient-main)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>AI Dispute Resolution</span>
         </h1>
-        <p>
-          Milestone payments governed by GenLayer Intelligent Contracts. When
-          deliverables are disputed, decentralized AI validators reach consensus
-          on fair fund distribution.
+        <p style={{ color: "var(--text-secondary)", maxWidth: 680, margin: "0 auto", fontSize: "1.05rem", lineHeight: 1.6 }}>
+          Automated milestone fund release backed by real GenLayer Intelligent Contracts. Non-deterministic evaluation is judged by validator LLMs reaching consensus under the Equivalence Principle.
         </p>
-      </section>
+        {totalCases !== null && (
+          <div style={{ marginTop: "1rem", fontSize: 13, color: "var(--accent-emerald)" }}>
+            ● Verified On-Chain: <strong>{totalCases}</strong> total escrow cases registered
+          </div>
+        )}
+      </header>
 
-      {/* Stats */}
-      <div className="stats-grid">
-        <div className="stat-box">
-          <div className="num" style={{ color: "var(--accent-cyan)" }}>
-            ${totalEscrow.toLocaleString()}
-          </div>
-          <div className="lbl">Total Escrow Value</div>
-        </div>
-        <div className="stat-box">
-          <div className="num">{jobs.length}</div>
-          <div className="lbl">Total Contracts</div>
-        </div>
-        <div className="stat-box">
-          <div className="num" style={{ color: "var(--accent-emerald)" }}>
-            {jobs.filter((j) => j.status.startsWith("resolved")).length}
-          </div>
-          <div className="lbl">Settled Jobs</div>
-        </div>
-        <div className="stat-box">
-          <div className="num" style={{ color: "var(--accent-purple)" }}>
-            {disputedCount}
-          </div>
-          <div className="lbl">AI Adjudicated</div>
-        </div>
+      {/* Tabs */}
+      <div style={{ display: "flex", justifyContent: "center", gap: 10, marginBottom: "2rem" }}>
+        {(["create", "deliver", "dispute", "view"] as const).map((tab) => (
+          <button
+            key={tab}
+            onClick={() => setActiveTab(tab)}
+            style={{
+              padding: "10px 20px",
+              borderRadius: 10,
+              fontSize: 14,
+              fontWeight: 600,
+              cursor: "pointer",
+              border: activeTab === tab ? "1px solid var(--accent-cyan)" : "1px solid var(--border-glass)",
+              background: activeTab === tab ? "rgba(6, 182, 212, 0.12)" : "rgba(255, 255, 255, 0.02)",
+              color: activeTab === tab ? "var(--accent-cyan)" : "var(--text-secondary)",
+              transition: "all 0.2s ease"
+            }}
+          >
+            {tab === "create" && "1. Create Escrow"}
+            {tab === "deliver" && "2. Submit Deliverable"}
+            {tab === "dispute" && "3. AI Adjudication"}
+            {tab === "view" && "4. Inspect On-Chain"}
+          </button>
+        ))}
       </div>
 
-      {/* Content Grid */}
-      <div className="content-grid">
-        {/* Create Job Form */}
-        <div className="card">
-          <div className="card-title">Create Escrow Job</div>
-          <div className="card-subtitle">
-            Lock funds into the Intelligent Contract
-          </div>
-
-          <form onSubmit={handleCreateJob}>
-            <div className="form-group">
-              <label className="form-label">Job Title</label>
-              <input
-                className="form-input"
-                placeholder="e.g. Build Web3 Staking Dashboard"
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                required
-              />
+      {/* Interactive Container */}
+      <div style={{ background: "var(--bg-card)", border: "1px solid var(--border-glass)", borderRadius: 18, padding: "2rem", boxShadow: "var(--shadow-card)", marginBottom: "2rem" }}>
+        {/* Tab 1: Create Case */}
+        {activeTab === "create" && (
+          <form onSubmit={handleCreateCase}>
+            <h3 style={{ fontSize: "1.3rem", marginBottom: "1rem" }}>Create New Escrow Case</h3>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem", marginBottom: "1rem" }}>
+              <div>
+                <label style={{ display: "block", fontSize: 12, color: "var(--text-muted)", marginBottom: 6 }}>Case ID / Slug</label>
+                <input
+                  type="text"
+                  placeholder="e.g. project_frontend_01"
+                  value={caseId}
+                  onChange={(e) => setCaseId(e.target.value)}
+                  style={{ width: "100%", padding: 12, borderRadius: 8, background: "rgba(0,0,0,0.3)", border: "1px solid var(--border-glass)", color: "#fff" }}
+                  required
+                />
+              </div>
+              <div>
+                <label style={{ display: "block", fontSize: 12, color: "var(--text-muted)", marginBottom: 6 }}>Freelancer Address</label>
+                <input
+                  type="text"
+                  placeholder="0x..."
+                  value={freelancerAddr}
+                  onChange={(e) => setFreelancerAddr(e.target.value)}
+                  style={{ width: "100%", padding: 12, borderRadius: 8, background: "rgba(0,0,0,0.3)", border: "1px solid var(--border-glass)", color: "#fff" }}
+                  required
+                />
+              </div>
             </div>
-
-            <div className="form-group">
-              <label className="form-label">Specifications & Criteria</label>
-              <textarea
-                className="form-textarea"
-                placeholder="Clearly define deliverables, deadlines, and quality requirements..."
-                value={specs}
-                onChange={(e) => setSpecs(e.target.value)}
-                required
-              />
-            </div>
-
-            <div className="form-group">
-              <label className="form-label">Freelancer Address</label>
-              <input
-                className="form-input"
-                placeholder="0x..."
-                value={freelancer}
-                onChange={(e) => setFreelancer(e.target.value)}
-                required
-              />
-            </div>
-
-            <div className="form-group">
-              <label className="form-label">Escrow Amount ($ / GEN)</label>
+            <div style={{ marginBottom: "1rem" }}>
+              <label style={{ display: "block", fontSize: 12, color: "var(--text-muted)", marginBottom: 6 }}>Escrow Amount (Wei / Tokens)</label>
               <input
                 type="number"
-                className="form-input"
-                placeholder="1000"
-                value={amount}
-                onChange={(e) => setAmount(e.target.value)}
+                value={amountWei}
+                onChange={(e) => setAmountWei(e.target.value)}
+                style={{ width: "100%", padding: 12, borderRadius: 8, background: "rgba(0,0,0,0.3)", border: "1px solid var(--border-glass)", color: "#fff" }}
                 required
               />
             </div>
-
-            <button type="submit" className="btn-primary">
-              Lock Escrow & Deploy
+            <div style={{ marginBottom: "1.5rem" }}>
+              <label style={{ display: "block", fontSize: 12, color: "var(--text-muted)", marginBottom: 6 }}>Agreed Requirements & Success Criteria</label>
+              <textarea
+                rows={4}
+                placeholder="Describe milestone deliverables, technical spec, and criteria for fund release..."
+                value={requirements}
+                onChange={(e) => setRequirements(e.target.value)}
+                style={{ width: "100%", padding: 12, borderRadius: 8, background: "rgba(0,0,0,0.3)", border: "1px solid var(--border-glass)", color: "#fff", resize: "vertical" }}
+                required
+              />
+            </div>
+            <button
+              type="submit"
+              disabled={isProcessing}
+              style={{ background: "var(--gradient-main)", color: "#fff", border: "none", padding: "12px 24px", borderRadius: 8, fontWeight: 700, cursor: isProcessing ? "not-allowed" : "pointer" }}
+            >
+              {isProcessing ? "Processing On-Chain..." : "Lock Escrow on GenLayer"}
             </button>
           </form>
-        </div>
+        )}
 
-        {/* Jobs List */}
-        <div>
-          <h2 style={{ fontSize: 20, fontWeight: 700, marginBottom: 20 }}>
-            Active & Resolved Contracts ({jobs.length})
-          </h2>
+        {/* Tab 2: Submit Deliverable */}
+        {activeTab === "deliver" && (
+          <form onSubmit={handleSubmitDeliverable}>
+            <h3 style={{ fontSize: "1.3rem", marginBottom: "1rem" }}>Submit Work Deliverable</h3>
+            <div style={{ marginBottom: "1rem" }}>
+              <label style={{ display: "block", fontSize: 12, color: "var(--text-muted)", marginBottom: 6 }}>Case ID</label>
+              <input
+                type="text"
+                placeholder="case_escrow_01"
+                value={caseId}
+                onChange={(e) => setCaseId(e.target.value)}
+                style={{ width: "100%", padding: 12, borderRadius: 8, background: "rgba(0,0,0,0.3)", border: "1px solid var(--border-glass)", color: "#fff" }}
+                required
+              />
+            </div>
+            <div style={{ marginBottom: "1.5rem" }}>
+              <label style={{ display: "block", fontSize: 12, color: "var(--text-muted)", marginBottom: 6 }}>Submitted Deliverable (Repo link, preview URL, or text)</label>
+              <textarea
+                rows={4}
+                placeholder="Paste github repository link, testnet contract address, or summary of delivered milestones..."
+                value={deliverableText}
+                onChange={(e) => setDeliverableText(e.target.value)}
+                style={{ width: "100%", padding: 12, borderRadius: 8, background: "rgba(0,0,0,0.3)", border: "1px solid var(--border-glass)", color: "#fff" }}
+                required
+              />
+            </div>
+            <button
+              type="submit"
+              disabled={isProcessing}
+              style={{ background: "var(--accent-cyan)", color: "#000", border: "none", padding: "12px 24px", borderRadius: 8, fontWeight: 700, cursor: isProcessing ? "not-allowed" : "pointer" }}
+            >
+              {isProcessing ? "Submitting..." : "Submit Deliverable Proof"}
+            </button>
+          </form>
+        )}
 
-          <div className="jobs-list">
-            {jobs.map((job) => (
-              <div key={job.id} className="job-card">
-                <div className="job-header">
-                  <div>
-                    <div className="job-title">{job.title}</div>
-                    <div
-                      style={{
-                        fontSize: 12,
-                        color: "var(--text-muted)",
-                        marginTop: 4,
-                      }}
-                    >
-                      Client: {job.client} → Freelancer: {job.freelancer}
-                    </div>
-                  </div>
-                  <span
-                    className={`badge ${
-                      job.status === "active"
-                        ? "badge-active"
-                        : job.status === "submitted"
-                        ? "badge-submitted"
-                        : "badge-resolved"
-                    }`}
-                  >
-                    {job.status.replace("_", " ")}
+        {/* Tab 3: Dispute & Adjudicate */}
+        {activeTab === "dispute" && (
+          <form onSubmit={handleAdjudicate}>
+            <h3 style={{ fontSize: "1.3rem", marginBottom: "1rem" }}>AI Consensus Adjudication</h3>
+            <p style={{ fontSize: 13, color: "var(--text-secondary)", marginBottom: "1.5rem" }}>
+              Triggers the GenLayer Equivalence Principle. Multi-validator LLM instances review the requirement brief against the submitted deliverable and reach semantic consensus on fund split.
+            </p>
+            <div style={{ marginBottom: "1.5rem" }}>
+              <label style={{ display: "block", fontSize: 12, color: "var(--text-muted)", marginBottom: 6 }}>Target Case ID</label>
+              <input
+                type="text"
+                placeholder="case_escrow_01"
+                value={caseId}
+                onChange={(e) => setCaseId(e.target.value)}
+                style={{ width: "100%", padding: 12, borderRadius: 8, background: "rgba(0,0,0,0.3)", border: "1px solid var(--border-glass)", color: "#fff" }}
+                required
+              />
+            </div>
+            <button
+              type="submit"
+              disabled={isProcessing}
+              style={{ background: "linear-gradient(135deg, #f43f5e, #8b5cf6)", color: "#fff", border: "none", padding: "12px 24px", borderRadius: 8, fontWeight: 700, cursor: isProcessing ? "not-allowed" : "pointer" }}
+            >
+              {isProcessing ? "Arbitrators Deliberating..." : "Execute AI Arbitrator Consensus"}
+            </button>
+          </form>
+        )}
+
+        {/* Tab 4: Inspect State */}
+        {activeTab === "view" && (
+          <div>
+            <h3 style={{ fontSize: "1.3rem", marginBottom: "1rem" }}>Inspect On-Chain Case State</h3>
+            <div style={{ display: "flex", gap: 10, marginBottom: "1.5rem" }}>
+              <input
+                type="text"
+                placeholder="Case ID to inspect"
+                value={inspectId}
+                onChange={(e) => setInspectId(e.target.value)}
+                style={{ flex: 1, padding: 12, borderRadius: 8, background: "rgba(0,0,0,0.3)", border: "1px solid var(--border-glass)", color: "#fff" }}
+              />
+              <button
+                type="button"
+                onClick={() => handleInspectCase()}
+                style={{ background: "rgba(255,255,255,0.1)", color: "#fff", border: "1px solid var(--border-glass)", padding: "12px 20px", borderRadius: 8, fontWeight: 600, cursor: "pointer" }}
+              >
+                Read State
+              </button>
+            </div>
+
+            {inspectedCase && (
+              <div style={{ background: "rgba(0,0,0,0.4)", borderRadius: 12, padding: "1.5rem", border: "1px solid var(--border-glass)" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "1rem" }}>
+                  <span style={{ fontSize: 18, fontWeight: 700 }}>Case: {inspectedCase.case_id}</span>
+                  <span style={{
+                    padding: "4px 10px",
+                    borderRadius: 6,
+                    fontSize: 12,
+                    fontWeight: 700,
+                    background: inspectedCase.status === "RESOLVED" ? "rgba(16, 185, 129, 0.2)" : "rgba(245, 158, 11, 0.2)",
+                    color: inspectedCase.status === "RESOLVED" ? "var(--accent-emerald)" : "var(--accent-amber)"
+                  }}>
+                    {inspectedCase.status}
                   </span>
                 </div>
-
-                <div className="job-specs">
-                  <strong>Specs:</strong> {job.specifications}
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px", fontSize: 13, marginBottom: "1rem" }}>
+                  <div><strong>Client:</strong> {inspectedCase.client}</div>
+                  <div><strong>Freelancer:</strong> {inspectedCase.freelancer}</div>
+                  <div><strong>Amount (Wei):</strong> {inspectedCase.amount}</div>
+                  <div><strong>AI Verdict:</strong> {inspectedCase.verdict} ({inspectedCase.client_share_pct}% refund to Client)</div>
                 </div>
-
-                {job.deliverable && (
-                  <div
-                    className="job-specs"
-                    style={{
-                      background: "rgba(255,255,255,0.02)",
-                      padding: 10,
-                      borderRadius: 8,
-                    }}
-                  >
-                    <strong>Delivered:</strong> {job.deliverable}
-                  </div>
-                )}
-
-                {/* Progress / Payout allocation if resolved */}
-                {job.status.startsWith("resolved") ? (
-                  <div className="payout-bar-wrap">
-                    <div className="payout-labels">
-                      <span style={{ color: "var(--accent-emerald)" }}>
-                        Freelancer: {job.freelancer_pct}% ($
-                        {(
-                          (job.payout_amount * job.freelancer_pct) /
-                          100
-                        ).toLocaleString()}
-                        )
-                      </span>
-                      <span style={{ color: "var(--accent-cyan)" }}>
-                        Client Refund: {job.client_pct}% ($
-                        {(
-                          (job.payout_amount * job.client_pct) /
-                          100
-                        ).toLocaleString()}
-                        )
-                      </span>
-                    </div>
-                    <div className="payout-progress">
-                      <div
-                        className="progress-freelancer"
-                        style={{ width: `${job.freelancer_pct}%` }}
-                      />
-                      <div
-                        className="progress-client"
-                        style={{ width: `${job.client_pct}%` }}
-                      />
-                    </div>
-                    {job.verdict_reason && (
-                      <div className="verdict-box">
-                        <strong>AI Consensus Adjudication:</strong>{" "}
-                        {job.verdict_reason}
-                      </div>
-                    )}
-                  </div>
-                ) : (
-                  <div
-                    style={{
-                      display: "flex",
-                      justifyContent: "space-between",
-                      alignItems: "center",
-                      marginTop: 16,
-                    }}
-                  >
-                    <span style={{ fontSize: 14, fontWeight: 700 }}>
-                      Escrow: ${job.payout_amount.toLocaleString()}
-                    </span>
-                    <button
-                      onClick={() => setActiveJobForDispute(job.id)}
-                      className="btn-primary"
-                      style={{
-                        width: "auto",
-                        padding: "8px 16px",
-                        fontSize: 13,
-                        background: "rgba(244, 63, 94, 0.2)",
-                        border: "1px solid rgba(244, 63, 94, 0.4)",
-                        color: "#f43f5e",
-                        boxShadow: "none",
-                      }}
-                    >
-                      ⚡ Raise AI Dispute
-                    </button>
-                  </div>
-                )}
-
-                {/* Dispute Form Modal / Drawer if selected */}
-                {activeJobForDispute === job.id && (
-                  <div
-                    style={{
-                      marginTop: 20,
-                      padding: 16,
-                      background: "rgba(0,0,0,0.3)",
-                      borderRadius: 12,
-                      border: "1px solid rgba(244, 63, 94, 0.3)",
-                    }}
-                  >
-                    <div
-                      style={{
-                        fontSize: 14,
-                        fontWeight: 700,
-                        marginBottom: 12,
-                        color: "#f43f5e",
-                      }}
-                    >
-                      ⚖️ Trigger GenLayer AI Validator Consensus
-                    </div>
-                    <div className="form-group">
-                      <label className="form-label">Client Claim</label>
-                      <input
-                        className="form-input"
-                        placeholder="Why do you think the work is incomplete or unsatisfactory?"
-                        value={clientClaim}
-                        onChange={(e) => setClientClaim(e.target.value)}
-                      />
-                    </div>
-                    <div className="form-group">
-                      <label className="form-label">Freelancer Claim</label>
-                      <input
-                        className="form-input"
-                        placeholder="Why do you believe you satisfied the requirements?"
-                        value={freelancerClaim}
-                        onChange={(e) => setFreelancerClaim(e.target.value)}
-                      />
-                    </div>
-                    <div style={{ display: "flex", gap: 10 }}>
-                      <button
-                        onClick={() => handleTriggerDispute(job.id)}
-                        disabled={isProcessing}
-                        className="btn-primary"
-                      >
-                        {isProcessing
-                          ? "AI Validators Adjudicating..."
-                          : "Submit to AI Consensus"}
-                      </button>
-                      <button
-                        onClick={() => setActiveJobForDispute(null)}
-                        style={{
-                          padding: "10px 16px",
-                          background: "transparent",
-                          border: "1px solid var(--border-glass)",
-                          color: "var(--text-muted)",
-                          borderRadius: 8,
-                          cursor: "pointer",
-                        }}
-                      >
-                        Cancel
-                      </button>
-                    </div>
+                <div style={{ fontSize: 13, marginBottom: "0.5rem" }}><strong>Requirements:</strong> {inspectedCase.requirements}</div>
+                <div style={{ fontSize: 13, marginBottom: "0.5rem" }}><strong>Deliverable:</strong> {inspectedCase.deliverable || "(Pending)"}</div>
+                {inspectedCase.reason && (
+                  <div style={{ marginTop: "1rem", padding: "10px", borderRadius: 6, background: "rgba(6, 182, 212, 0.08)", border: "1px solid rgba(6, 182, 212, 0.2)", fontSize: 13 }}>
+                    <strong>Consensus Reasoning:</strong> {inspectedCase.reason}
                   </div>
                 )}
               </div>
-            ))}
+            )}
           </div>
-        </div>
+        )}
+
+        {/* Live Status Toast / Bar */}
+        {statusMessage && (
+          <div style={{ marginTop: "1.5rem", padding: "12px 16px", borderRadius: 8, background: "rgba(255,255,255,0.03)", border: "1px solid var(--border-glass)", fontSize: 13, color: "var(--accent-cyan)" }}>
+            {statusMessage}
+            {lastTxHash && (
+              <div style={{ marginTop: 6 }}>
+                <a href={`${EXPLORER_BASE}/tx/${lastTxHash}`} target="_blank" rel="noopener noreferrer" style={{ color: "#fff", textDecoration: "underline" }}>
+                  View Transaction on GenLayer Explorer ↗
+                </a>
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
-      {/* Footer */}
-      <footer className="footer">
-        <p>
-          Powered by{" "}
-          <a
-            href="https://genlayer.com"
-            target="_blank"
-            rel="noreferrer"
-            style={{ color: "var(--accent-cyan)", textDecoration: "none" }}
-          >
-            GenLayer
-          </a>{" "}
-          — Decentralized AI Adjudication
-        </p>
+      {/* Architecture Footer */}
+      <footer style={{ textAlign: "center", fontSize: 12, color: "var(--text-muted)", marginTop: "3rem" }}>
+        Powered by GenLayer GenVM · Equivalence Principle Validator Consensus · CPython 3.13 WebAssembly Sandbox
       </footer>
     </div>
   );
