@@ -21,7 +21,7 @@ When clients and freelancers face milestone disagreements, GenLayer AI validator
 
 | Network | Chain ID | Contract Address | Status | Explorer |
 | :--- | :--- | :--- | :--- | :--- |
-| **GenLayer Asimov Testnet** | 4221 | `0xFD2C068A93A38Ba95d1ff7EB78b647f80d7A93c2` | Finalized (`FINISHED_WITH_RETURN`) | [View on Asimov Explorer](https://explorer-asimov.genlayer.com/address/0xFD2C068A93A38Ba95d1ff7EB78b647f80d7A93c2) |
+| **GenLayer Asimov Testnet** | 4221 | `0xde195fC7b3FeA71c0d894ebeE44C4f78D50D707F` | Finalized (`FINISHED_WITH_RETURN`) | [View on Asimov Explorer](https://explorer-asimov.genlayer.com/address/0xde195fC7b3FeA71c0d894ebeE44C4f78D50D707F) |
 | **GenLayer Bradbury Testnet** | 4221 | `0x9263BC62311614fdcdA0030d2e493B210f133ffc` | Finalized (`FINISHED_WITH_RETURN`) | [View on Bradbury Explorer](https://explorer-bradbury.genlayer.com/address/0x9263BC62311614fdcdA0030d2e493B210f133ffc) |
 
 ---

@@ -5,12 +5,12 @@
       "network": "testnet-asimov",
       "chain_id": 4221,
       "rpc": "https://rpc-asimov.genlayer.com",
-      "contract_address": "0xFD2C068A93A38Ba95d1ff7EB78b647f80d7A93c2",
-      "deploy_tx": "0xcbf24250f6cb3b2325a29055b5f93a8cf82cffff344a100939bebe14b5ee9f08",
+      "contract_address": "0xde195fC7b3FeA71c0d894ebeE44C4f78D50D707F",
+      "deploy_tx": "0xd2159fa3c1d7b176be51b0db8466ef02bb0c60da81bbf7cb252078fadb9b2241",
       "status": "FINALIZED",
       "consensus_result": "AGREE",
       "execution_result": "FINISHED_WITH_RETURN",
-      "explorer_url": "https://explorer-asimov.genlayer.com/address/0xFD2C068A93A38Ba95d1ff7EB78b647f80d7A93c2"
+      "explorer_url": "https://explorer-asimov.genlayer.com/address/0xde195fC7b3FeA71c0d894ebeE44C4f78D50D707F"
     },
     {
       "network": "testnet-bradbury",
